@@ -1,0 +1,8 @@
+# compiled game binary
+raylib_app
+raylib_app.exe
+raylib_app_debug
+raylib_app_debug.exe
+
+# object files
+*.o
