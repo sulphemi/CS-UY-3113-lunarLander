@@ -50,14 +50,14 @@ Renderable::Renderable(const Texture2D* texture, Vector2 origin) :
 void Renderable::tick(double deltaTime) {}
 
 Entity::Entity(
-    Vector2 screenCoords,
+    Vector2 position,
     std::unique_ptr<Renderable> sprite,
     std::unique_ptr<Hitbox> hitbox,
     Vector2 scale
 ) :
     mSprite(std::move(sprite)),
     mHitbox(std::move(hitbox)),
-    mPos(screenCoords),
+    mPosition(position),
     mScale(scale) {}
 
 void Entity::tick(double deltaTime) {
@@ -65,11 +65,10 @@ void Entity::tick(double deltaTime) {
 }
 
 void Entity::render(double deltaTime) {
-  if (mSprite) mSprite->render(mPos, mScale);
+  if (mSprite) mSprite->render(mPosition, mScale);
 }
 
 bool Entity::isCollidingWith(const Entity& other) const {
   return mHitbox && other.mHitbox &&
-         mHitbox->isColliding(mPos, *other.mHitbox, other.mPos);
+         mHitbox->isColliding(mPosition, *other.mHitbox, other.mPosition);
 }
-

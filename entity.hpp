@@ -42,7 +42,7 @@ struct Renderable {
 struct Entity {
   std::unique_ptr<Renderable> mSprite;
   std::unique_ptr<Hitbox> mHitbox;
-  Vector2 mPos;
+  Vector2 mPosition;
   Vector2 mScale;
 
   Entity(
