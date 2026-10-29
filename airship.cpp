@@ -1,6 +1,6 @@
 #include "entity.hpp"
 
-extern const int SCREEN_WIDTH, SCREEN_HEIGHT;
+extern const int SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_SCALE;
 
 struct StaticSprite : public Renderable {
   StaticSprite(const Texture2D* texture) :
@@ -22,10 +22,10 @@ struct StaticSprite : public Renderable {
             .height = textureHeight
         },
         Rectangle{
-            .x = scale.x,
-            .y = scale.y,
-            .width = static_cast<float>(SCREEN_WIDTH),
-            .height = static_cast<float>(SCREEN_HEIGHT),
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = textureWidth * scale.x * SCREEN_SCALE,
+            .height = textureHeight * scale.y * SCREEN_SCALE,
         },
         Vector2{.x = 0.0f, .y = 0.0f},
         0.0f,
