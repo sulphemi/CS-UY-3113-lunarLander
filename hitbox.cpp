@@ -5,7 +5,7 @@
 Hitbox::Hitbox(Vector2 offset) :
     mOffset(offset) {}
 
-void Hitbox::render(Vector2 pos) const {}
+void Hitbox::render(Vector2) const {}
 
 RectangleHitbox::RectangleHitbox(Vector2 dim, Vector2 offset) :
     Hitbox(offset),
