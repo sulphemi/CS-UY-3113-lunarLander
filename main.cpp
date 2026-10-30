@@ -321,10 +321,14 @@ void processInput(double deltaTime) {
     bool leftPressed = IsKeyDown(KEY_A);
     bool rightPressed = IsKeyDown(KEY_D);
 
-    if (leftPressed && !rightPressed) {
-      gAirship->mAcceleration.x -= Airship::ACCELERATION_RATE;
-    } else if (rightPressed && !leftPressed) {
-      gAirship->mAcceleration.x += Airship::ACCELERATION_RATE;
+    if (gAirship->mFuel > 0.0f) {
+      if (leftPressed && !rightPressed) {
+        gAirship->mAcceleration.x -= Airship::ACCELERATION_RATE;
+      } else if (rightPressed && !leftPressed) {
+        gAirship->mAcceleration.x += Airship::ACCELERATION_RATE;
+      }
+    } else {
+      gAirship->mBurner = false;
     }
   }
 }
