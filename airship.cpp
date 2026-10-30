@@ -167,6 +167,8 @@ struct Airship : public PhysicsEntity {
   static constexpr float GRAVITY = 100.0f;
   static constexpr float RISE_ACCELERATION = 60.0f;
   static constexpr float RISE_SLOWDOWN_DECELERATION = 40.0f;
+  static constexpr float BURNER_FUEL_DRAIN_RATE = 1.0f;
+  static constexpr float ENGINE_FUEL_DRAIN_RATE = 10.0f;
 
   bool mBurner = true;
   float mFuel = 5000.0f;
@@ -236,9 +238,25 @@ struct Airship : public PhysicsEntity {
     }
   }
 
+  void updateFuel(double deltaTime) {
+    if (mFuel <= 0.0f) {
+      mFuel = 0.0f;
+      return;
+    }
+
+    float drain = 0.0f;
+    if (mBurner) {
+      drain += BURNER_FUEL_DRAIN_RATE;
+    }
+    drain += ENGINE_FUEL_DRAIN_RATE * (std::abs(mAcceleration.x) / ACCELERATION_RATE);
+
+    mFuel = std::max(0.0f, mFuel - drain * static_cast<float>(deltaTime));
+  }
+
   void tick(double deltaTime) override {
     updateVerticalMovement(deltaTime);
     updateHorizontalMovement(deltaTime);
+    updateFuel(deltaTime);
     switchSprite();
 
     PhysicsEntity::tick(deltaTime);
