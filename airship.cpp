@@ -171,7 +171,7 @@ struct Airship : public PhysicsEntity {
   static constexpr float ENGINE_FUEL_DRAIN_RATE = 10.0f;
 
   bool mBurner = true;
-  float mFuel = 5000.0f;
+  float mFuel = 1200.0f;
   float mHoverAltitude = 0.0f;
 
   std::unique_ptr<Renderable> mStaticSprite;
@@ -248,7 +248,8 @@ struct Airship : public PhysicsEntity {
     if (mBurner) {
       drain += BURNER_FUEL_DRAIN_RATE;
     }
-    drain += ENGINE_FUEL_DRAIN_RATE * (std::abs(mAcceleration.x) / ACCELERATION_RATE);
+    drain += ENGINE_FUEL_DRAIN_RATE *
+             (std::abs(mAcceleration.x) / ACCELERATION_RATE);
 
     mFuel = std::max(0.0f, mFuel - drain * static_cast<float>(deltaTime));
   }
