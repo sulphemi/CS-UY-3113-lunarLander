@@ -131,6 +131,37 @@ struct PhysicsEntity : public Entity {
   }
 };
 
+struct Enemy : public PhysicsEntity {
+  static constexpr float DEFAULT_SPEED = 60.0f;
+  static constexpr float WRAP_X = -50.0f;
+
+  float mSpeed;
+
+  Enemy(
+      Vector2 position,
+      float speed = DEFAULT_SPEED,
+      std::unique_ptr<Renderable> sprite = nullptr,
+      std::unique_ptr<Hitbox> hitbox = nullptr,
+      Vector2 scale = {.x = 1.0f, .y = 1.0f}
+  ) :
+      PhysicsEntity(
+          position,
+          std::move(sprite),
+          std::move(hitbox),
+          scale,
+          Vector2{.x = -speed, .y = 0.0f},
+          Vector2{.x = 0.0f, .y = 0.0f}
+      ),
+      mSpeed(speed) {}
+
+  void tick(double deltaTime) override {
+    PhysicsEntity::tick(deltaTime);
+    if (mPosition.x < WRAP_X * SCREEN_SCALE) {
+      mPosition.x = static_cast<float>(SCREEN_WIDTH);
+    }
+  }
+};
+
 struct Airship : public PhysicsEntity {
   static constexpr float ACCELERATION_RATE = 100.0f, MOVEMENT_DECAY = 1.0f;
   static constexpr float GRAVITY = 100.0f;

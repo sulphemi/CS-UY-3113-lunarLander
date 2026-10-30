@@ -37,8 +37,16 @@ constexpr Vector2 AIRSHIP_HITBOX_OFFSET = {
     .y = (AIRSHIP_SPRITE_DIM.y - AIRSHIP_HITBOX_DIM.y) / 2.0f
 };
 
-constexpr Vector2 ENEMY_STARTING_POS = {
-    .x = 250.0f * SCREEN_SCALE, .y = 180.0f * SCREEN_SCALE
+constexpr Vector2 ENEMY_1_STARTING_POS = {
+    .x = 461.0f * SCREEN_SCALE, .y = 164.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 ENEMY_2_STARTING_POS = {
+    .x = 238.0f * SCREEN_SCALE, .y = 117.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 ENEMY_3_STARTING_POS = {
+    .x = 139.0f * SCREEN_SCALE, .y = 243.0f * SCREEN_SCALE
 };
 
 constexpr Vector2 ENEMY_SPRITE_DIM = {
@@ -184,10 +192,31 @@ void init() {
       )
   );
 
-  // Enemy hitbox + entity
+  // enemies
   gColliders.push_back(
-      std::make_unique<PhysicsEntity>(
-          ENEMY_STARTING_POS,
+      std::make_unique<Enemy>(
+          ENEMY_1_STARTING_POS,
+          100.0f,
+          std::make_unique<StaticSprite>(&gEnemyTexture),
+          std::make_unique<RectangleHitbox>(
+              ENEMY_HITBOX_DIM, ENEMY_HITBOX_OFFSET, BAD
+          )
+      )
+  );
+  gColliders.push_back(
+      std::make_unique<Enemy>(
+          ENEMY_2_STARTING_POS,
+          120.0f,
+          std::make_unique<StaticSprite>(&gEnemyTexture),
+          std::make_unique<RectangleHitbox>(
+              ENEMY_HITBOX_DIM, ENEMY_HITBOX_OFFSET, BAD
+          )
+      )
+  );
+  gColliders.push_back(
+      std::make_unique<Enemy>(
+          ENEMY_3_STARTING_POS,
+          80.0f,
           std::make_unique<StaticSprite>(&gEnemyTexture),
           std::make_unique<RectangleHitbox>(
               ENEMY_HITBOX_DIM, ENEMY_HITBOX_OFFSET, BAD
