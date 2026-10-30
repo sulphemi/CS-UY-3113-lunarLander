@@ -36,6 +36,73 @@ struct StaticSprite : public Renderable {
   }
 };
 
+struct AnimatedSprite : public Renderable {
+  int mTotalFrames;
+  int mCurrentFrame = 0;
+  double mFrameDuration;
+  double mElapsedTime = 0.0;
+  bool mLoop;
+
+  AnimatedSprite(
+      const Texture2D* texture,
+      int totalFrames,
+      double fps = 12.0,
+      bool loop = true,
+      Vector2 origin = {.x = 0.0f, .y = 0.0f}
+  ) :
+      Renderable(texture, origin),
+      mTotalFrames(totalFrames),
+      mFrameDuration(fps > 0.0 ? 1.0 / fps : 0.0),
+      mLoop(loop) {}
+
+  void tick(double deltaTime) override {
+    if (mTotalFrames <= 1 || mFrameDuration <= 0.0) {
+      return;
+    }
+
+    mElapsedTime += deltaTime;
+    while (mElapsedTime >= mFrameDuration) {
+      mElapsedTime -= mFrameDuration;
+      if (mCurrentFrame + 1 < mTotalFrames) {
+        mCurrentFrame++;
+      } else if (mLoop) {
+        mCurrentFrame = 0;
+      } else {
+        // not looping, stay on frame
+        mElapsedTime = 0.0;
+        break;
+      }
+    }
+  }
+
+  void render(
+      Vector2 renderLocation = {.x = 0.0f, .y = 0.0f},
+      Vector2 scale = {.x = 1.0f, .y = 1.0f}
+  ) const override {
+    float frameWidth = static_cast<float>(mTexture->width) / mTotalFrames;
+    float frameHeight = static_cast<float>(mTexture->height);
+
+    DrawTexturePro(
+        *mTexture,
+        Rectangle{
+            .x = mCurrentFrame * frameWidth,
+            .y = 0.0f,
+            .width = frameWidth,
+            .height = frameHeight,
+        },
+        Rectangle{
+            .x = renderLocation.x,
+            .y = renderLocation.y,
+            .width = frameWidth * scale.x * SCREEN_SCALE,
+            .height = frameHeight * scale.y * SCREEN_SCALE,
+        },
+        mOrigin,
+        0.0f,
+        WHITE
+    );
+  }
+};
+
 struct PhysicsEntity : public Entity {
   Vector2 mVelocity;
   Vector2 mAcceleration;
@@ -67,12 +134,23 @@ struct Airship : public PhysicsEntity {
   bool mBurner;
   float mFuel;
 
+  std::unique_ptr<Renderable> mStaticSprite;
+  std::unique_ptr<Renderable> mForwardSprite;
+  std::unique_ptr<Renderable> mBackwardSprite;
+  Renderable* mCurrentSprite;
+
   Airship(
       Vector2 position,
-      std::unique_ptr<Renderable> sprite = nullptr,
+      std::unique_ptr<Renderable> staticSprite = nullptr,
+      std::unique_ptr<Renderable> forwardSprite = nullptr,
+      std::unique_ptr<Renderable> backwardSprite = nullptr,
       std::unique_ptr<Hitbox> hitbox = nullptr
   ) :
-      PhysicsEntity(position, std::move(sprite), std::move(hitbox)) {}
+      PhysicsEntity(position, nullptr, std::move(hitbox)),
+      mStaticSprite(std::move(staticSprite)),
+      mForwardSprite(std::move(forwardSprite)),
+      mBackwardSprite(std::move(backwardSprite)),
+      mCurrentSprite(mStaticSprite.get()) {}
 
   void tick(double deltaTime) override {
     if (mAcceleration.x == 0.0f && mVelocity.x != 0.0f) {
@@ -90,5 +168,15 @@ struct Airship : public PhysicsEntity {
     }
 
     PhysicsEntity::tick(deltaTime);
+
+    if (mCurrentSprite) {
+      mCurrentSprite->tick(deltaTime);
+    }
+  }
+
+  void render(double deltaTime) override {
+    if (mCurrentSprite) {
+      mCurrentSprite->render(mPosition, mScale);
+    }
   }
 };

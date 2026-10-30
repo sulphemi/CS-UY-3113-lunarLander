@@ -30,7 +30,9 @@ double lastTickTime;
 
 Texture2D gBgTexture;
 Texture2D gUITexture;
-Texture2D gPlayerTexture;
+Texture2D gPlayerStaticTexture;
+Texture2D gPlayerForwardsTexture;
+Texture2D gPlayerBackwardsTexture;
 std::unique_ptr<StaticSprite> gBgSprite;
 std::unique_ptr<StaticSprite> gUISprite;
 std::unique_ptr<Airship> gAirship;
@@ -44,12 +46,17 @@ void init() {
 
   gBgTexture = LoadTexture("assets/sprites/bg.png");
   gUITexture = LoadTexture("assets/sprites/ui.png");
-  gPlayerTexture = LoadTexture("assets/sprites/airship-inverted.png");
+  gPlayerStaticTexture = LoadTexture("assets/sprites/player-static.png");
+  gPlayerForwardsTexture = LoadTexture("assets/sprites/player-forwards.png");
+  gPlayerBackwardsTexture = LoadTexture("assets/sprites/player-backwards.png");
 
   gBgSprite = std::make_unique<StaticSprite>(&gBgTexture);
   gUISprite = std::make_unique<StaticSprite>(&gUITexture);
   gAirship = std::make_unique<Airship>(
-      AIRSHIP_STARTING_POS, std::make_unique<StaticSprite>(&gPlayerTexture)
+      AIRSHIP_STARTING_POS,
+      std::make_unique<StaticSprite>(&gPlayerStaticTexture),
+      std::make_unique<AnimatedSprite>(&gPlayerForwardsTexture, 2),
+      std::make_unique<AnimatedSprite>(&gPlayerBackwardsTexture, 2)
   );
 }
 
@@ -61,11 +68,17 @@ void processInput(double deltaTime) {
   if (gAirship) {
     gAirship->mAcceleration.x = 0.0f;
 
-    if (IsKeyDown(KEY_A)) {
+    bool leftPressed = IsKeyDown(KEY_A);
+    bool rightPressed = IsKeyDown(KEY_D);
+
+    if (leftPressed && !rightPressed) {
       gAirship->mAcceleration.x -= Airship::ACCELERATION_RATE;
-    }
-    if (IsKeyDown(KEY_D)) {
+      gAirship->mCurrentSprite = gAirship->mBackwardSprite.get();
+    } else if (rightPressed && !leftPressed) {
       gAirship->mAcceleration.x += Airship::ACCELERATION_RATE;
+      gAirship->mCurrentSprite = gAirship->mForwardSprite.get();
+    } else {
+      gAirship->mCurrentSprite = gAirship->mStaticSprite.get();
     }
   }
 }
@@ -95,7 +108,9 @@ void shutdown() {
 
   UnloadTexture(gBgTexture);
   UnloadTexture(gUITexture);
-  UnloadTexture(gPlayerTexture);
+  UnloadTexture(gPlayerStaticTexture);
+  UnloadTexture(gPlayerForwardsTexture);
+  UnloadTexture(gPlayerBackwardsTexture);
 
   CloseWindow();
 }
