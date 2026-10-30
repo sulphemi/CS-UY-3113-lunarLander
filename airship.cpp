@@ -188,22 +188,26 @@ struct Airship : public PhysicsEntity {
     }
   }
 
+  void updateHorizontalMovement(double deltaTime) {
+    if (mAcceleration.x == 0.0f) {
+      mVelocity.x -= mVelocity.x * MOVEMENT_DECAY * deltaTime;
+    }
+  }
+
+  void switchSprite() {
+    if (mAcceleration.x > 0) {
+      mCurrentSprite = mForwardSprite.get();
+    } else if (mAcceleration.x < 0) {
+      mCurrentSprite = mBackwardSprite.get();
+    } else {
+      mCurrentSprite = mStaticSprite.get();
+    }
+  }
+
   void tick(double deltaTime) override {
     updateVerticalMovement(deltaTime);
-
-    if (mAcceleration.x == 0.0f && mVelocity.x != 0.0f) {
-      float decayAmount = MOVEMENT_DECAY * deltaTime * mVelocity.x;
-
-      // if velocity is smaller than one step then stop completely
-      if (std::fabs(mVelocity.x) <= decayAmount) {
-        mPosition.x +=
-            (mVelocity.x * (std::fabs(mVelocity.x) / MOVEMENT_DECAY)) * 0.5f;
-        mVelocity.x = 0.0f;
-      } else {
-        float sign = (mVelocity.x > 0.0f) ? -1.0f : 1.0f;
-        mVelocity.x += sign * decayAmount;
-      }
-    }
+    updateHorizontalMovement(deltaTime);
+    switchSprite();
 
     std::cout << "Current values:\n"
               << "  Burner: " << (mBurner ? "ON" : "OFF") << "\n"

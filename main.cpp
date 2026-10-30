@@ -77,12 +77,8 @@ void processInput(double deltaTime) {
 
     if (leftPressed && !rightPressed) {
       gAirship->mAcceleration.x -= Airship::ACCELERATION_RATE;
-      gAirship->mCurrentSprite = gAirship->mBackwardSprite.get();
     } else if (rightPressed && !leftPressed) {
       gAirship->mAcceleration.x += Airship::ACCELERATION_RATE;
-      gAirship->mCurrentSprite = gAirship->mForwardSprite.get();
-    } else {
-      gAirship->mCurrentSprite = gAirship->mStaticSprite.get();
     }
   }
 }
