@@ -134,7 +134,9 @@ constexpr Vector2 BURNER_ON_INDICATOR_POS = {
 AppStatus gAppStatus = RUNNING;
 Color gBgColor = {.r = 0x16, .g = 0x16, .b = 0x1d, .a = 0xff};
 
-double lastTickTime;
+constexpr float FIXED_TIMESTEP = 1.0f / 60.0f;
+float gTimeAccumulator = 0.0f;
+float gPreviousTicks = 0.0f;
 
 Texture2D gBgTexture;
 Texture2D gUITexture;
@@ -282,7 +284,7 @@ void init() {
   // InitAudioDevice();
   SetTargetFPS(FPS);
 
-  lastTickTime = GetTime();
+  gPreviousTicks = static_cast<float>(GetTime());
 
   gBgTexture = LoadTexture("assets/sprites/bg.png");
   gUITexture = LoadTexture("assets/sprites/ui.png");
@@ -337,37 +339,57 @@ void processInputGameOver() {
   }
 }
 
-void update(double deltaTime) {
-  for (std::unique_ptr<Entity>& collider : gColliders) {
-    collider->tick(deltaTime);
+void update() {
+  float ticks = static_cast<float>(GetTime());
+  float deltaTime = ticks - gPreviousTicks;
+  gPreviousTicks = ticks;
+
+  deltaTime += gTimeAccumulator;
+
+  if (deltaTime < FIXED_TIMESTEP) {
+    gTimeAccumulator = deltaTime;
+    return;
   }
 
-  if (gAirship) {
-    gAirship->tick(deltaTime);
-
+  while (deltaTime >= FIXED_TIMESTEP) {
     for (std::unique_ptr<Entity>& collider : gColliders) {
-      if (collider->isCollidingWith(*gAirship)) {
-        switch (collider->mHitbox->mType) {
-          case BAD:
-            loseGame();
-            break;
-          case GOAL: {
-            float speedSquared = gAirship->mVelocity.x * gAirship->mVelocity.x +
-                                 gAirship->mVelocity.y * gAirship->mVelocity.y;
-            if (speedSquared <
-                SAFE_LANDING_SPEED_THRESHOLD * SAFE_LANDING_SPEED_THRESHOLD) {
-              winGame();
-            } else {
+      collider->tick(FIXED_TIMESTEP);
+    }
+
+    if (gAirship) {
+      gAirship->tick(FIXED_TIMESTEP);
+
+      for (std::unique_ptr<Entity>& collider : gColliders) {
+        if (collider->isCollidingWith(*gAirship)) {
+          switch (collider->mHitbox->mType) {
+            case BAD:
               loseGame();
+              break;
+            case GOAL: {
+              float speedSquared =
+                  gAirship->mVelocity.x * gAirship->mVelocity.x +
+                  gAirship->mVelocity.y * gAirship->mVelocity.y;
+              if (speedSquared <
+                  SAFE_LANDING_SPEED_THRESHOLD * SAFE_LANDING_SPEED_THRESHOLD) {
+                winGame();
+              } else {
+                loseGame();
+              }
+              break;
             }
-            break;
+            default:
+              break;
           }
-          default:
-            break;
         }
       }
     }
 
+    deltaTime -= FIXED_TIMESTEP;
+  }
+
+  gTimeAccumulator = deltaTime;
+
+  if (gAirship) {
     if (gAltitudeDisplay) {
       gAltitudeDisplay->setValue(
           static_cast<int>(std::round((650.0f - gAirship->mPosition.y) * 1.93f))
@@ -468,14 +490,12 @@ int main() {
   init();
 
   while (gAppStatus != TERMINATED) {
-    double currTime = GetTime();
-    double deltaTime = currTime - lastTickTime;
-    lastTickTime = currTime;
+    double deltaTime = GetFrameTime();
 
     switch (gAppStatus) {
       case RUNNING:
         processInput(deltaTime);
-        update(deltaTime);
+        update();
         render(deltaTime);
         break;
       case GAMEOVER:
