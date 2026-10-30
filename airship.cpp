@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -209,14 +210,6 @@ struct Airship : public PhysicsEntity {
     updateHorizontalMovement(deltaTime);
     switchSprite();
 
-    std::cout << "Current values:\n"
-              << "  Burner: " << (mBurner ? "ON" : "OFF") << "\n"
-              << "  Position: (" << mPosition.x << ", " << mPosition.y << ")\n"
-              << "  Velocity: (" << mVelocity.x << ", " << mVelocity.y << ")\n"
-              << "  Acceleration: (" << mAcceleration.x << ", "
-              << mAcceleration.y << ")\n"
-              << "  Fuel: " << mFuel << std::endl;
-
     PhysicsEntity::tick(deltaTime);
 
     if (mCurrentSprite) {
@@ -227,6 +220,112 @@ struct Airship : public PhysicsEntity {
   void render(double deltaTime) override {
     if (mCurrentSprite) {
       mCurrentSprite->render(mPosition, mScale);
+    }
+  }
+};
+
+struct DigitDisplay : public Renderable {
+  static constexpr int TOTAL_DIGITS = 10;
+
+  int mDigit = 0;
+
+  DigitDisplay(
+      const Texture2D* texture,
+      int digit = 0,
+      Vector2 origin = {.x = 0.0f, .y = 0.0f}
+  ) :
+      Renderable(texture, origin),
+      mDigit(std::clamp(digit, 0, 9)) {}
+
+  void setDigit(int digit) { mDigit = std::clamp(digit, 0, 9); }
+
+  void render(
+      Vector2 renderLocation = {.x = 0.0f, .y = 0.0f},
+      Vector2 scale = {.x = 1.0f, .y = 1.0f}
+  ) const override {
+    if (!mTexture) return;
+
+    float digitWidth = static_cast<float>(mTexture->width) / TOTAL_DIGITS;
+    float digitHeight = static_cast<float>(mTexture->height);
+
+    DrawTexturePro(
+        *mTexture,
+        Rectangle{
+            .x = mDigit * digitWidth,
+            .y = 0.0f,
+            .width = digitWidth,
+            .height = digitHeight,
+        },
+        Rectangle{
+            .x = renderLocation.x,
+            .y = renderLocation.y,
+            .width = digitWidth * scale.x * SCREEN_SCALE,
+            .height = digitHeight * scale.y * SCREEN_SCALE,
+        },
+        mOrigin,
+        0.0f,
+        WHITE
+    );
+  }
+};
+
+struct NumberDisplay : public Renderable {
+  static constexpr int NUM_DIGITS = 4;
+  static constexpr int MAX_VALUE = 9999;
+  static constexpr float DIGIT_GAP = 1.0f;
+
+  int mValue = 0;
+  std::array<DigitDisplay, NUM_DIGITS> mDigits;
+
+  NumberDisplay(
+      const Texture2D* texture,
+      int value = 0,
+      Vector2 origin = {.x = 0.0f, .y = 0.0f}
+  ) :
+      Renderable(texture, origin),
+      mDigits{
+          DigitDisplay(texture, 0, origin),
+          DigitDisplay(texture, 0, origin),
+          DigitDisplay(texture, 0, origin),
+          DigitDisplay(texture, 0, origin),
+      } {
+    setValue(value);
+  }
+
+  void setValue(int value) {
+    mValue = std::clamp(value, 0, MAX_VALUE);
+
+    mDigits[0].setDigit((mValue / 1000) % 10);
+    mDigits[1].setDigit((mValue / 100) % 10);
+    mDigits[2].setDigit((mValue / 10) % 10);
+    mDigits[3].setDigit(mValue % 10);
+  }
+
+  void render(
+      Vector2 renderLocation = {.x = 0.0f, .y = 0.0f},
+      Vector2 scale = {.x = 1.0f, .y = 1.0f}
+  ) const override {
+    if (!mTexture) return;
+
+    float digitWidth =
+        static_cast<float>(mTexture->width) / DigitDisplay::TOTAL_DIGITS;
+    float scaledDigitStride = (digitWidth + DIGIT_GAP) * scale.x * SCREEN_SCALE;
+
+    // find first non-zero digit, keeping last digit
+    size_t startIndex = NUM_DIGITS - 1;
+    for (size_t i = 0; i < NUM_DIGITS - 1; i++) {
+      if (mDigits[i].mDigit != 0) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    for (size_t i = startIndex; i < NUM_DIGITS; i++) {
+      Vector2 digitPos = {
+          .x = renderLocation.x + static_cast<float>(i) * scaledDigitStride,
+          .y = renderLocation.y,
+      };
+      mDigits[i].render(digitPos, scale);
     }
   }
 };
