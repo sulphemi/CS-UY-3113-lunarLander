@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <memory>
 
@@ -130,9 +132,13 @@ struct PhysicsEntity : public Entity {
 
 struct Airship : public PhysicsEntity {
   static constexpr float ACCELERATION_RATE = 100.0f, MOVEMENT_DECAY = 1.0f;
+  static constexpr float GRAVITY = 100.0f;
+  static constexpr float RISE_ACCELERATION = 60.0f;
+  static constexpr float RISE_SLOWDOWN_DECELERATION = 40.0f;
 
-  bool mBurner;
-  float mFuel;
+  bool mBurner = true;
+  float mFuel = 5000.0f;
+  float mHoverAltitude = 0.0f;
 
   std::unique_ptr<Renderable> mStaticSprite;
   std::unique_ptr<Renderable> mForwardSprite;
@@ -147,25 +153,65 @@ struct Airship : public PhysicsEntity {
       std::unique_ptr<Hitbox> hitbox = nullptr
   ) :
       PhysicsEntity(position, nullptr, std::move(hitbox)),
+      mHoverAltitude(position.y),
       mStaticSprite(std::move(staticSprite)),
       mForwardSprite(std::move(forwardSprite)),
       mBackwardSprite(std::move(backwardSprite)),
       mCurrentSprite(mStaticSprite.get()) {}
 
+  void updateVerticalMovement(double deltaTime) {
+    if (!mBurner) {
+      mAcceleration.y = GRAVITY;
+      return;
+    }
+
+    float distanceToHover = mPosition.y - mHoverAltitude;
+    if (distanceToHover <= 0.0f && mVelocity.y <= 0.0f) {
+      mPosition.y = mHoverAltitude;
+      mVelocity.y = 0.0f;
+      mAcceleration.y = 0.0f;
+      return;
+    }
+
+    // check if the airship needs to start decelerating to come to stop at the
+    // hover altitude
+    float upwardSpeed = -mVelocity.y;
+    float stoppingDistance =
+        (upwardSpeed * upwardSpeed) / (2.0f * RISE_SLOWDOWN_DECELERATION);
+
+    if (upwardSpeed > 0.0f && stoppingDistance >= distanceToHover) {
+      // slow down smoothly so velocity reaches 0 right at hover altitude
+      mAcceleration.y = (upwardSpeed * upwardSpeed) / (2.0f * distanceToHover);
+    } else {
+      // decelerate downward fall and then speed up upward
+      mAcceleration.y = -RISE_ACCELERATION;
+    }
+  }
+
   void tick(double deltaTime) override {
+    updateVerticalMovement(deltaTime);
+
     if (mAcceleration.x == 0.0f && mVelocity.x != 0.0f) {
       float decayAmount = MOVEMENT_DECAY * deltaTime * mVelocity.x;
 
       // if velocity is smaller than one step then stop completely
-      if (std::abs(mVelocity.x) <= decayAmount) {
+      if (std::fabs(mVelocity.x) <= decayAmount) {
         mPosition.x +=
-            (mVelocity.x * (std::abs(mVelocity.x) / MOVEMENT_DECAY)) * 0.5f;
+            (mVelocity.x * (std::fabs(mVelocity.x) / MOVEMENT_DECAY)) * 0.5f;
         mVelocity.x = 0.0f;
       } else {
         float sign = (mVelocity.x > 0.0f) ? -1.0f : 1.0f;
         mVelocity.x += sign * decayAmount;
       }
     }
+
+    std::cout << "Current values:\n"
+              << "  Burner: " << (mBurner ? "ON" : "OFF") << "\n"
+              << "  Position: (" << mPosition.x << ", " << mPosition.y << ")\n"
+              << "  Velocity: (" << mVelocity.x << ", " << mVelocity.y << ")\n"
+              << "  Acceleration: (" << mAcceleration.x << ", "
+              << mAcceleration.y << ")\n"
+              << "  Fuel: " << mFuel << std::endl;
 
     PhysicsEntity::tick(deltaTime);
 

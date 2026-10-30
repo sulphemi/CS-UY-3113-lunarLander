@@ -66,6 +66,10 @@ void processInput(double deltaTime) {
   }
 
   if (gAirship) {
+    if (IsKeyPressed(KEY_SPACE)) {
+      gAirship->mBurner = !gAirship->mBurner;
+    }
+
     gAirship->mAcceleration.x = 0.0f;
 
     bool leftPressed = IsKeyDown(KEY_A);
