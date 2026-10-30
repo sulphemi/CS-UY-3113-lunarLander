@@ -127,6 +127,10 @@ constexpr Vector2 BURNER_TEMP_DISPLAY_POS = {
     .x = 558.0f * SCREEN_SCALE, .y = 28.0f * SCREEN_SCALE
 };
 
+constexpr Vector2 BURNER_ON_INDICATOR_POS = {
+    .x = 551.0f * SCREEN_SCALE, .y = 16.0f * SCREEN_SCALE
+};
+
 AppStatus gAppStatus = RUNNING;
 Color gBgColor = {.r = 0x16, .g = 0x16, .b = 0x1d, .a = 0xff};
 
@@ -141,10 +145,12 @@ Texture2D gPlayerBackwardsTexture;
 Texture2D gEnemyTexture;
 Texture2D gGameOverTexture;
 Texture2D gWinTexture;
+Texture2D gOnIndicatorTexture;
 std::unique_ptr<StaticSprite> gBgSprite;
 std::unique_ptr<StaticSprite> gUISprite;
 std::unique_ptr<StaticSprite> gGameOverSprite;
 std::unique_ptr<StaticSprite> gWinSprite;
+std::unique_ptr<StaticSprite> gOnIndicatorSprite;
 std::unique_ptr<NumberDisplay> gBurnerTempDisplay;
 std::unique_ptr<NumberDisplay> gEnvTempDisplay;
 std::unique_ptr<NumberDisplay> gAltitudeDisplay;
@@ -287,11 +293,13 @@ void init() {
   gEnemyTexture = LoadTexture("assets/sprites/enemy.png");
   gGameOverTexture = LoadTexture("assets/sprites/game-over-screen.png");
   gWinTexture = LoadTexture("assets/sprites/win-screen.png");
+  gOnIndicatorTexture = LoadTexture("assets/sprites/on-indicator.png");
 
   gBgSprite = std::make_unique<StaticSprite>(&gBgTexture);
   gUISprite = std::make_unique<StaticSprite>(&gUITexture);
   gGameOverSprite = std::make_unique<StaticSprite>(&gGameOverTexture);
   gWinSprite = std::make_unique<StaticSprite>(&gWinTexture);
+  gOnIndicatorSprite = std::make_unique<StaticSprite>(&gOnIndicatorTexture);
 
   reset();
 }
@@ -407,6 +415,8 @@ void render(double deltaTime) {
   }
 #endif
   if (gUISprite) gUISprite->render();
+  if (gAirship && gAirship->mBurner && gOnIndicatorSprite)
+    gOnIndicatorSprite->render(BURNER_ON_INDICATOR_POS);
   if (gBurnerTempDisplay) gBurnerTempDisplay->render(BURNER_TEMP_DISPLAY_POS);
   if (gEnvTempDisplay) gEnvTempDisplay->render(ENV_TEMP_DISPLAY_POS);
   if (gAltitudeDisplay) gAltitudeDisplay->render(ALTITUDE_DISPLAY_POS);
@@ -438,6 +448,7 @@ void shutdown() {
   gUISprite.reset();
   gGameOverSprite.reset();
   gWinSprite.reset();
+  gOnIndicatorSprite.reset();
 
   UnloadTexture(gBgTexture);
   UnloadTexture(gUITexture);
@@ -448,6 +459,7 @@ void shutdown() {
   UnloadTexture(gEnemyTexture);
   UnloadTexture(gGameOverTexture);
   UnloadTexture(gWinTexture);
+  UnloadTexture(gOnIndicatorTexture);
 
   CloseWindow();
 }
