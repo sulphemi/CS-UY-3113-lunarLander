@@ -43,6 +43,9 @@ endif
 all: $(TARGET)
 
 # Object compilation rules
+main.o: airship.cpp
+main_debug.o: airship.cpp
+
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
