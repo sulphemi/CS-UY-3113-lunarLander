@@ -1,9 +1,10 @@
 #include <memory>
+#include <vector>
 
 #include "airship.cpp"
 #include "raylib.h"
 
-enum AppStatus : char { RUNNING, TERMINATED, GAMEOVER };
+enum AppStatus : char { RUNNING, TERMINATED, GAMEOVER, GAMEWIN };
 
 const char* const TITLE = "airship";
 
@@ -22,6 +23,73 @@ constexpr int FPS = 60;
 constexpr Vector2 AIRSHIP_STARTING_POS = {
     .x = 50.0f * SCREEN_SCALE, .y = 50.0f * SCREEN_SCALE
 };
+
+constexpr Vector2 AIRSHIP_SPRITE_DIM = {
+    .x = 40.0f * SCREEN_SCALE, .y = 23.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 AIRSHIP_HITBOX_DIM = {
+    .x = 34.0f * SCREEN_SCALE, .y = 20.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 AIRSHIP_HITBOX_OFFSET = {
+    .x = (AIRSHIP_SPRITE_DIM.x - AIRSHIP_HITBOX_DIM.x) / 2.0f,
+    .y = (AIRSHIP_SPRITE_DIM.y - AIRSHIP_HITBOX_DIM.y) / 2.0f
+};
+
+constexpr Vector2 ENEMY_STARTING_POS = {
+    .x = 250.0f * SCREEN_SCALE, .y = 180.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 ENEMY_SPRITE_DIM = {
+    .x = 40.0f * SCREEN_SCALE, .y = 23.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 ENEMY_HITBOX_DIM = {
+    .x = 34.0f * SCREEN_SCALE, .y = 20.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 ENEMY_HITBOX_OFFSET = {
+    .x = (ENEMY_SPRITE_DIM.x - ENEMY_HITBOX_DIM.x) / 2.0f,
+    .y = (ENEMY_SPRITE_DIM.y - ENEMY_HITBOX_DIM.y) / 2.0f
+};
+
+constexpr Vector2 GROUND_1_POS = {
+    .x = 0.0f * SCREEN_SCALE, .y = 326.0f * SCREEN_SCALE
+};
+constexpr Vector2 GROUND_1_DIM = {
+    .x = 336.0f * SCREEN_SCALE, .y = 34.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 GROUND_2_POS = {
+    .x = 335.0f * SCREEN_SCALE, .y = 348.0f * SCREEN_SCALE
+};
+constexpr Vector2 GROUND_2_DIM = {
+    .x = 18.0f * SCREEN_SCALE, .y = 12.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 GROUND_3_POS = {
+    .x = 405.0f * SCREEN_SCALE, .y = 347.0f * SCREEN_SCALE
+};
+constexpr Vector2 GROUND_3_DIM = {
+    .x = 38.0f * SCREEN_SCALE, .y = 13.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 GROUND_4_POS = {
+    .x = 442.0f * SCREEN_SCALE, .y = 318.0f * SCREEN_SCALE
+};
+constexpr Vector2 GROUND_4_DIM = {
+    .x = 97.0f * SCREEN_SCALE, .y = 42.0f * SCREEN_SCALE
+};
+
+constexpr Vector2 GOAL_POS = {
+    .x = 353.0f * SCREEN_SCALE, .y = 343.0f * SCREEN_SCALE
+};
+constexpr Vector2 GOAL_DIM = {
+    .x = 52.0f * SCREEN_SCALE, .y = 17.0f * SCREEN_SCALE
+};
+
+constexpr float SAFE_LANDING_SPEED_THRESHOLD = 30.0f;
 
 constexpr Vector2 X_VELOCITY_DISPLAY_POS = {
     .x = 552.0f * SCREEN_SCALE, .y = 120.0f * SCREEN_SCALE
@@ -62,6 +130,7 @@ Texture2D gNumbersTexture;
 Texture2D gPlayerStaticTexture;
 Texture2D gPlayerForwardsTexture;
 Texture2D gPlayerBackwardsTexture;
+Texture2D gEnemyTexture;
 std::unique_ptr<StaticSprite> gBgSprite;
 std::unique_ptr<StaticSprite> gUISprite;
 std::unique_ptr<NumberDisplay> gBurnerTempDisplay;
@@ -72,6 +141,21 @@ std::unique_ptr<NumberDisplay> gYVelDisplay;
 std::unique_ptr<NumberDisplay> gAirPressureDisplay;
 std::unique_ptr<NumberDisplay> gFuelDisplay;
 std::unique_ptr<Airship> gAirship;
+std::vector<std::unique_ptr<Entity>> gColliders;
+
+void loseGame() {
+#ifdef DEBUG
+  std::cout << "LOSE" << std::endl;
+#endif
+  gAppStatus = GAMEOVER;
+}
+
+void winGame() {
+#ifdef DEBUG
+  std::cout << "WIN" << std::endl;
+#endif
+  gAppStatus = GAMEWIN;
+}
 
 void init() {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE);
@@ -86,6 +170,7 @@ void init() {
   gPlayerStaticTexture = LoadTexture("assets/sprites/player-static.png");
   gPlayerForwardsTexture = LoadTexture("assets/sprites/player-forwards.png");
   gPlayerBackwardsTexture = LoadTexture("assets/sprites/player-backwards.png");
+  gEnemyTexture = LoadTexture("assets/sprites/enemy.png");
 
   gBgSprite = std::make_unique<StaticSprite>(&gBgTexture);
   gUISprite = std::make_unique<StaticSprite>(&gUITexture);
@@ -93,7 +178,70 @@ void init() {
       AIRSHIP_STARTING_POS,
       std::make_unique<StaticSprite>(&gPlayerStaticTexture),
       std::make_unique<AnimatedSprite>(&gPlayerForwardsTexture, 2),
-      std::make_unique<AnimatedSprite>(&gPlayerBackwardsTexture, 2)
+      std::make_unique<AnimatedSprite>(&gPlayerBackwardsTexture, 2),
+      std::make_unique<RectangleHitbox>(
+          AIRSHIP_HITBOX_DIM, AIRSHIP_HITBOX_OFFSET, PLAYER
+      )
+  );
+
+  // Enemy hitbox + entity
+  gColliders.push_back(
+      std::make_unique<PhysicsEntity>(
+          ENEMY_STARTING_POS,
+          std::make_unique<StaticSprite>(&gEnemyTexture),
+          std::make_unique<RectangleHitbox>(
+              ENEMY_HITBOX_DIM, ENEMY_HITBOX_OFFSET, BAD
+          )
+      )
+  );
+
+  // ground hitboxes
+  gColliders.push_back(
+      std::make_unique<Entity>(
+          GROUND_1_POS,
+          nullptr,
+          std::make_unique<RectangleHitbox>(
+              GROUND_1_DIM, Vector2{.x = 0.0f, .y = 0.0f}, BAD
+          )
+      )
+  );
+  gColliders.push_back(
+      std::make_unique<Entity>(
+          GROUND_2_POS,
+          nullptr,
+          std::make_unique<RectangleHitbox>(
+              GROUND_2_DIM, Vector2{.x = 0.0f, .y = 0.0f}, BAD
+          )
+      )
+  );
+  gColliders.push_back(
+      std::make_unique<Entity>(
+          GROUND_3_POS,
+          nullptr,
+          std::make_unique<RectangleHitbox>(
+              GROUND_3_DIM, Vector2{.x = 0.0f, .y = 0.0f}, BAD
+          )
+      )
+  );
+  gColliders.push_back(
+      std::make_unique<Entity>(
+          GROUND_4_POS,
+          nullptr,
+          std::make_unique<RectangleHitbox>(
+              GROUND_4_DIM, Vector2{.x = 0.0f, .y = 0.0f}, BAD
+          )
+      )
+  );
+
+  // goal hitbox (landing pad)
+  gColliders.push_back(
+      std::make_unique<Entity>(
+          GOAL_POS,
+          nullptr,
+          std::make_unique<RectangleHitbox>(
+              GOAL_DIM, Vector2{.x = 0.0f, .y = 0.0f}, GOAL
+          )
+      )
   );
 
   gAltitudeDisplay = std::make_unique<NumberDisplay>(&gNumbersTexture);
@@ -127,8 +275,35 @@ void processInput(double deltaTime) {
 }
 
 void update(double deltaTime) {
+  for (std::unique_ptr<Entity>& collider : gColliders) {
+    collider->tick(deltaTime);
+  }
+
   if (gAirship) {
     gAirship->tick(deltaTime);
+
+    for (std::unique_ptr<Entity>& collider : gColliders) {
+      if (collider->isCollidingWith(*gAirship)) {
+        switch (collider->mHitbox->mType) {
+          case BAD:
+            loseGame();
+            break;
+          case GOAL: {
+            float speedSquared = gAirship->mVelocity.x * gAirship->mVelocity.x +
+                                 gAirship->mVelocity.y * gAirship->mVelocity.y;
+            if (speedSquared <
+                SAFE_LANDING_SPEED_THRESHOLD * SAFE_LANDING_SPEED_THRESHOLD) {
+              winGame();
+            } else {
+              loseGame();
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      }
+    }
 
     if (gAltitudeDisplay) {
       gAltitudeDisplay->setValue(
@@ -162,7 +337,20 @@ void render(double deltaTime) {
   ClearBackground(gBgColor);
 
   if (gBgSprite) gBgSprite->render();
+  for (auto& collider : gColliders) {
+    if (collider) collider->render(deltaTime);
+  }
   if (gAirship) gAirship->render(deltaTime);
+#ifdef DEBUG
+  if (gAirship && gAirship->mHitbox) {
+    gAirship->mHitbox->render(gAirship->mPosition);
+  }
+  for (auto& collider : gColliders) {
+    if (collider && collider->mHitbox) {
+      collider->mHitbox->render(collider->mPosition);
+    }
+  }
+#endif
   if (gUISprite) gUISprite->render();
   if (gBurnerTempDisplay) gBurnerTempDisplay->render(BURNER_TEMP_DISPLAY_POS);
   if (gEnvTempDisplay) gEnvTempDisplay->render(ENV_TEMP_DISPLAY_POS);
@@ -179,6 +367,7 @@ void render(double deltaTime) {
 void shutdown() {
   // whats the point of using unique_ptr here if its still necessary to delete
   // it manually lol
+  gColliders.clear();
   gAirship.reset();
   gFuelDisplay.reset();
   gAirPressureDisplay.reset();
@@ -196,6 +385,7 @@ void shutdown() {
   UnloadTexture(gPlayerStaticTexture);
   UnloadTexture(gPlayerForwardsTexture);
   UnloadTexture(gPlayerBackwardsTexture);
+  UnloadTexture(gEnemyTexture);
 
   CloseWindow();
 }

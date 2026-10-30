@@ -2,13 +2,14 @@
 
 #include <cmath>
 
-Hitbox::Hitbox(Vector2 offset) :
-    mOffset(offset) {}
+Hitbox::Hitbox(Vector2 offset, HitboxType type) :
+    mOffset(offset),
+    mType(type) {}
 
 void Hitbox::render(Vector2) const {}
 
-RectangleHitbox::RectangleHitbox(Vector2 dim, Vector2 offset) :
-    Hitbox(offset),
+RectangleHitbox::RectangleHitbox(Vector2 dim, Vector2 offset, HitboxType type) :
+    Hitbox(offset, type),
     mDim(dim) {}
 
 bool RectangleHitbox::isColliding(
@@ -38,11 +39,20 @@ bool RectangleHitbox::collidesWithShape(
 }
 
 void RectangleHitbox::render(Vector2 pos) const {
+  Color drawColor = WHITE;
+  if (mType == BAD) {
+    drawColor = RED;
+  } else if (mType == GOAL) {
+    drawColor = GREEN;
+  } else if (mType == PLAYER) {
+    drawColor = BLUE;
+  }
+
   DrawRectangleLines(
       static_cast<int>(pos.x + mOffset.x),
       static_cast<int>(pos.y + mOffset.y),
       static_cast<int>(mDim.x),
       static_cast<int>(mDim.y),
-      WHITE
+      drawColor
   );
 }
