@@ -97,7 +97,7 @@ constexpr Vector2 GOAL_DIM = {
     .x = 52.0f * SCREEN_SCALE, .y = 17.0f * SCREEN_SCALE
 };
 
-constexpr float SAFE_LANDING_SPEED_THRESHOLD = 30.0f;
+constexpr float SAFE_LANDING_SPEED_THRESHOLD = 25.0f * SCREEN_SCALE;
 
 constexpr Vector2 X_VELOCITY_DISPLAY_POS = {
     .x = 552.0f * SCREEN_SCALE, .y = 120.0f * SCREEN_SCALE
@@ -139,8 +139,12 @@ Texture2D gPlayerStaticTexture;
 Texture2D gPlayerForwardsTexture;
 Texture2D gPlayerBackwardsTexture;
 Texture2D gEnemyTexture;
+Texture2D gGameOverTexture;
+Texture2D gWinTexture;
 std::unique_ptr<StaticSprite> gBgSprite;
 std::unique_ptr<StaticSprite> gUISprite;
+std::unique_ptr<StaticSprite> gGameOverSprite;
+std::unique_ptr<StaticSprite> gWinSprite;
 std::unique_ptr<NumberDisplay> gBurnerTempDisplay;
 std::unique_ptr<NumberDisplay> gEnvTempDisplay;
 std::unique_ptr<NumberDisplay> gAltitudeDisplay;
@@ -165,23 +169,10 @@ void winGame() {
   gAppStatus = GAMEWIN;
 }
 
-void init() {
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE);
-  // InitAudioDevice();
-  SetTargetFPS(FPS);
+void reset() {
+  gAppStatus = RUNNING;
+  gColliders.clear();
 
-  lastTickTime = GetTime();
-
-  gBgTexture = LoadTexture("assets/sprites/bg.png");
-  gUITexture = LoadTexture("assets/sprites/ui.png");
-  gNumbersTexture = LoadTexture("assets/sprites/numbers.png");
-  gPlayerStaticTexture = LoadTexture("assets/sprites/player-static.png");
-  gPlayerForwardsTexture = LoadTexture("assets/sprites/player-forwards.png");
-  gPlayerBackwardsTexture = LoadTexture("assets/sprites/player-backwards.png");
-  gEnemyTexture = LoadTexture("assets/sprites/enemy.png");
-
-  gBgSprite = std::make_unique<StaticSprite>(&gBgTexture);
-  gUISprite = std::make_unique<StaticSprite>(&gUITexture);
   gAirship = std::make_unique<Airship>(
       AIRSHIP_STARTING_POS,
       std::make_unique<StaticSprite>(&gPlayerStaticTexture),
@@ -280,6 +271,31 @@ void init() {
   gFuelDisplay = std::make_unique<NumberDisplay>(&gNumbersTexture);
 }
 
+void init() {
+  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE);
+  // InitAudioDevice();
+  SetTargetFPS(FPS);
+
+  lastTickTime = GetTime();
+
+  gBgTexture = LoadTexture("assets/sprites/bg.png");
+  gUITexture = LoadTexture("assets/sprites/ui.png");
+  gNumbersTexture = LoadTexture("assets/sprites/numbers.png");
+  gPlayerStaticTexture = LoadTexture("assets/sprites/player-static.png");
+  gPlayerForwardsTexture = LoadTexture("assets/sprites/player-forwards.png");
+  gPlayerBackwardsTexture = LoadTexture("assets/sprites/player-backwards.png");
+  gEnemyTexture = LoadTexture("assets/sprites/enemy.png");
+  gGameOverTexture = LoadTexture("assets/sprites/game-over-screen.png");
+  gWinTexture = LoadTexture("assets/sprites/win-screen.png");
+
+  gBgSprite = std::make_unique<StaticSprite>(&gBgTexture);
+  gUISprite = std::make_unique<StaticSprite>(&gUITexture);
+  gGameOverSprite = std::make_unique<StaticSprite>(&gGameOverTexture);
+  gWinSprite = std::make_unique<StaticSprite>(&gWinTexture);
+
+  reset();
+}
+
 void processInput(double deltaTime) {
   if (WindowShouldClose()) {
     gAppStatus = TERMINATED;
@@ -300,6 +316,16 @@ void processInput(double deltaTime) {
     } else if (rightPressed && !leftPressed) {
       gAirship->mAcceleration.x += Airship::ACCELERATION_RATE;
     }
+  }
+}
+
+void processInputGameOver() {
+  if (WindowShouldClose()) {
+    gAppStatus = TERMINATED;
+  }
+
+  if (IsKeyPressed(KEY_R)) {
+    reset();
   }
 }
 
@@ -390,6 +416,9 @@ void render(double deltaTime) {
     gAirPressureDisplay->render(AIR_PRESSURE_DISPLAY_POS);
   if (gFuelDisplay) gFuelDisplay->render(FUEL_DISPLAY_POS);
 
+  if (gAppStatus == GAMEOVER && gGameOverSprite) gGameOverSprite->render();
+  if (gAppStatus == GAMEWIN && gWinSprite) gWinSprite->render();
+
   EndDrawing();
 }
 
@@ -407,6 +436,8 @@ void shutdown() {
   gBurnerTempDisplay.reset();
   gBgSprite.reset();
   gUISprite.reset();
+  gGameOverSprite.reset();
+  gWinSprite.reset();
 
   UnloadTexture(gBgTexture);
   UnloadTexture(gUITexture);
@@ -415,6 +446,8 @@ void shutdown() {
   UnloadTexture(gPlayerForwardsTexture);
   UnloadTexture(gPlayerBackwardsTexture);
   UnloadTexture(gEnemyTexture);
+  UnloadTexture(gGameOverTexture);
+  UnloadTexture(gWinTexture);
 
   CloseWindow();
 }
@@ -422,14 +455,26 @@ void shutdown() {
 int main() {
   init();
 
-  while (gAppStatus == RUNNING) {
+  while (gAppStatus != TERMINATED) {
     double currTime = GetTime();
     double deltaTime = currTime - lastTickTime;
     lastTickTime = currTime;
 
-    processInput(deltaTime);
-    update(deltaTime);
-    render(deltaTime);
+    switch (gAppStatus) {
+      case RUNNING:
+        processInput(deltaTime);
+        update(deltaTime);
+        render(deltaTime);
+        break;
+      case GAMEOVER:
+        render(deltaTime);
+        processInputGameOver();
+        break;
+      case GAMEWIN:
+        render(deltaTime);
+        processInputGameOver();
+        break;
+    }
   }
 
   shutdown();
