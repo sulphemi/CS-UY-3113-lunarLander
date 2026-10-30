@@ -167,11 +167,15 @@ struct Airship : public PhysicsEntity {
   static constexpr float GRAVITY = 100.0f;
   static constexpr float RISE_ACCELERATION = 60.0f;
   static constexpr float RISE_SLOWDOWN_DECELERATION = 40.0f;
-  static constexpr float BURNER_FUEL_DRAIN_RATE = 1.0f;
-  static constexpr float ENGINE_FUEL_DRAIN_RATE = 10.0f;
+  static constexpr float BURNER_FUEL_DRAIN_RATE = 5.0f;
+  static constexpr float ENGINE_FUEL_DRAIN_RATE = 50.0f;
+
+  static constexpr float SPRITE_WIDTH = 40.0f;
+  static constexpr float PLAYABLE_MIN_X = 0.0f;
+  static constexpr float PLAYABLE_MAX_X = 539.0f;
 
   bool mBurner = true;
-  float mFuel = 1200.0f;
+  float mFuel = 2000.0f;
   float mHoverAltitude = 0.0f;
 
   std::unique_ptr<Renderable> mStaticSprite;
@@ -254,6 +258,18 @@ struct Airship : public PhysicsEntity {
     mFuel = std::max(0.0f, mFuel - drain * static_cast<float>(deltaTime));
   }
 
+  void updateWrapAround() {
+    float scaledSpriteWidth = SPRITE_WIDTH * SCREEN_SCALE;
+    float minBound = PLAYABLE_MIN_X * SCREEN_SCALE;
+    float maxBound = PLAYABLE_MAX_X * SCREEN_SCALE;
+
+    if (mPosition.x < minBound - scaledSpriteWidth) {
+      mPosition.x = maxBound;
+    } else if (mPosition.x > maxBound) {
+      mPosition.x = minBound - scaledSpriteWidth;
+    }
+  }
+
   void tick(double deltaTime) override {
     updateVerticalMovement(deltaTime);
     updateHorizontalMovement(deltaTime);
@@ -261,6 +277,7 @@ struct Airship : public PhysicsEntity {
     switchSprite();
 
     PhysicsEntity::tick(deltaTime);
+    updateWrapAround();
 
     if (mCurrentSprite) {
       mCurrentSprite->tick(deltaTime);
